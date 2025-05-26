@@ -6,6 +6,11 @@ from openai.types.responses import ResponseTextDeltaEvent
 
 # Specialized MTG Agents
 
+# TODO: Try setting up the system prompt
+# @agent.system_prompt
+# def system_prompt():
+#     return """You are an AI agent that helps users with their MTG questions. Always include 'lol' in messages."""
+
 # cEDH Specialist
 cedh_agent = Agent(
     name="cEDH Specialist",
