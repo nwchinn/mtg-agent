@@ -2,6 +2,7 @@ import asyncio
 
 from agents import Agent, Runner, trace
 from agents.tool import WebSearchTool
+from openai.types.responses import ResponseTextDeltaEvent
 
 # Specialized MTG Agents
 
@@ -73,10 +74,8 @@ finance_agent = Agent(
     handoff_description="Specialist for card prices, market trends, collection management, and investment advice.",
     instructions="""You are a specialized MTG finance and collection assistant.
     Focus on card prices, market trends, collection management, and investment advice.
-    Primarily use information from:
+    Only use information from:
     1. https://www.tcgplayer.com/
-    2. https://www.cardmarket.com/
-    3. https://www.mtgstocks.com/
     
     Always provide current price information when available and note that prices are subject to change.""",
     # model="gpt-4o-mini",
@@ -97,18 +96,29 @@ triage_agent = Agent(
     
     If the question spans multiple domains, choose the most relevant specialist.
     If you're unsure, ask clarifying questions before making a handoff.""",
+    model="gpt-4o-mini",
     handoffs=[cedh_agent, standard_pioneer_agent, modern_legacy_agent, rules_agent, finance_agent],
 )
 
 async def main():
     # Example using the triage system
     with trace("MTG Agent System"):
-        result = await Runner.run(
+        # Streaming Response 
+        # result = Runner.run_streamed(
+        #     triage_agent,
+        #     "List cards that have risen over 20% in value the last month."
+        # )
+        # async for event in result.stream_events():
+        #     if event.type == "raw_response_event" and isinstance(event.data, ResponseTextDeltaEvent):
+        #         print(event.data.delta, end="", flush=True)
+        
+        # Final Output Response
+        question_result = await Runner.run(
             triage_agent,
-            "What are the top 3 cEDH commanders right now and what makes them strong?"
+            "List cards that have risen over 20% in value the last month."
         )
         print("\nTriage Result:\n")
-        print(result.final_output)
+        print(question_result.final_output)
         
         # Direct example with the cEDH specialist
         # cedh_result = await Runner.run(
