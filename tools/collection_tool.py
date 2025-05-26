@@ -53,7 +53,7 @@ def get_collection_summary(collection: Optional[CardCollection] = None) -> Colle
     # Get total value and convert Decimal to float for JSON serialization
     total_value = {currency: float(value) for currency, value in collection.total_value.items()}
     
-    # Get the top 10 most valuable cards
+    # Get the top 10 most valuable cards by purchase price
     sorted_cards = sorted(
         collection.cards, 
         key=lambda card: float(card.purchase_price), 
@@ -64,9 +64,12 @@ def get_collection_summary(collection: Optional[CardCollection] = None) -> Colle
         top_valuable.append({
             "name": card.name,
             "set": card.set_name,
+            "set_code": card.set_code,
+            "collector_number": card.collector_number,
             "foil": card.foil,
-            "price": float(card.purchase_price),
-            "currency": card.purchase_price_currency
+            "purchase_price": float(card.purchase_price),
+            "currency": card.purchase_price_currency,
+            "scryfall_id": card.scryfall_id
         })
     
     # Get rarity breakdown
