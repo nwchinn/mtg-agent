@@ -2,3 +2,4 @@ agents
 openai
 pydantic
 asyncio
+aiohttp
