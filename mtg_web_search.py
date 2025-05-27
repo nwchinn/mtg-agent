@@ -81,6 +81,7 @@ finance_agent = Agent(
     Focus on card prices, market trends, collection management, and investment advice.
     Only use information from:
     1. https://www.tcgplayer.com/
+    2. https://scryfall.com/
     
     Always provide current price information when available and note that prices are subject to change.""",
     # model="gpt-4o-mini",

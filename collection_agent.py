@@ -9,6 +9,7 @@ owned cards, and analyze the market value of your collection.
 import asyncio
 import json
 from typing import Dict, List, Any, Optional
+import asyncio
 
 from agents import Agent, Runner, trace
 from agents.tool import WebSearchTool
@@ -20,6 +21,11 @@ from tools.collection_tool import (
     calculate_ownership_for_deck,
     get_collection_value,
     search_collection_by_name
+)
+
+from tools.price_lookup import (
+    get_most_valuable_cards_by_market_price,
+    calculate_collection_market_value
 )
 
 class DeckList(BaseModel):
@@ -54,7 +60,7 @@ collection_specialist = Agent(
     IMPORTANT PRICE INFORMATION:
     - The collection CSV contains PURCHASE PRICES, not current market prices
     - Always clearly distinguish between purchase prices and current market prices
-    - For current market prices, ALWAYS use TCGPlayer.com as your reference
+    - For current market prices, ALWAYS use Scryfall API for pricing data
     - When referring to a card's value, specify if it's the purchase price or current market price
     
     Always provide accurate information based on the actual collection data.
@@ -109,19 +115,23 @@ rules_specialist = Agent(
 # Main triage agent that handles collection-related queries and delegates to specialists
 main_agent = Agent(
     name="MTG Collection Assistant",
-    instructions="""You are an MTG Collection Assistant with access to the user's card collection and web search capabilities.
+    instructions="""You are an MTG Collection Assistant with access to the user's card collection, market pricing data, and web search capabilities.
     
     YOUR COLLECTION CONTEXT:
     - The user has a collection of MTG cards imported from ManaBox_Collection.csv
     - You can access details about the cards they own, quantities, values, etc.
     - You can calculate what percentage of a deck they already own
+    - You have TWO types of pricing data available to you:
+        1. PURCHASE PRICES: What the user paid for each card when they bought it
+        2. CURRENT MARKET PRICES: The estimated value from TCGPlayer's current pricing
     
-    PRICING POLICY - VERY IMPORTANT:
-    - Always clearly distinguish between PURCHASE PRICES (what the user paid) and CURRENT MARKET PRICES
-    - The collection data only contains purchase prices, not current market prices
-    - For ANY current market price information, ALWAYS use TCGPlayer.com as your reference
-    - When discussing card values, clearly state whether you're referring to purchase price or current market price
-    - If asked about current prices or market value, ALWAYS look up the latest prices on TCGPlayer.com
+    DUAL PRICING SYSTEM - VERY IMPORTANT:
+    - ALWAYS clearly distinguish between PURCHASE PRICES and CURRENT MARKET PRICES
+    - When discussing a card's value, explicitly state which price you're referring to
+    - When showing lists of valuable cards, clarify if they're sorted by purchase price or market price
+    - If asked about collection value, provide BOTH the total purchase value AND the current market value
+    - When a user asks for "most valuable cards" without specifying, default to CURRENT market prices
+    - All market prices are retrieved from Scryfall API - remind users to check Scryfall.com for the most accurate pricing
     
     For specialized queries:
     1. For questions about the user's collection, card ownership, or collection value, handle them directly.
@@ -149,8 +159,15 @@ async def process_collection_query(query: str):
     Returns:
         The response from the agent
     """
-    # Load collection data summary for context
-    collection_summary = get_collection_summary()
+    # Load collection and get summary
+    collection = load_collection()
+    collection_summary = get_collection_summary(collection)
+    
+    # Look up market prices for the most valuable cards
+    market_valuable_cards = await get_most_valuable_cards_by_market_price(collection.cards, limit=5)
+    
+    # Calculate total market value of the collection
+    market_value = await calculate_collection_market_value(collection.cards)
     
     # Format collection context to inject into the conversation
     collection_context = f"""
@@ -158,16 +175,20 @@ async def process_collection_query(query: str):
     - Total cards: {collection_summary.total_cards}
     - Unique cards: {collection_summary.unique_cards}
     - Total purchase value (what user paid): {', '.join([f"{float(value)} {currency}" for currency, value in collection_summary.total_value.items()])}
+    - Estimated total market value (current): {', '.join([f"{float(value)} {currency}" for currency, value in market_value.items()])}
     - Rarity breakdown: {', '.join([f"{rarity}: {count}" for rarity, count in collection_summary.rarity_breakdown.items()])}
     
-    Top valuable cards by PURCHASE PRICE (not current market price):
+    Top valuable cards by PURCHASE PRICE (what user paid):
     {json.dumps(collection_summary.top_valuable_cards[:5], indent=2)}
     
-    IMPORTANT PRICE INFORMATION:
-    - The above prices are PURCHASE PRICES (what the user paid), NOT current market prices
-    - For current market prices, you MUST use TCGPlayer.com as your reference
-    - Always make it clear when you're discussing purchase prices vs. current market prices
-    - When asked about card values or collection value, check current prices on TCGPlayer.com
+    Top valuable cards by CURRENT MARKET PRICE (from TCGPlayer):
+    {json.dumps(market_valuable_cards[:5], indent=2)}
+    
+    PRICING INFORMATION:
+    - Purchase prices are what the user originally paid for their cards
+    - Market prices are current estimated values from TCGPlayer
+    - When discussing card values, always be clear about which price you're referring to
+    - For the most accurate current prices, always direct users to TCGPlayer.com
     """
     
     # Prepare the prompt with collection context
