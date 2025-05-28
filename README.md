@@ -105,3 +105,9 @@ export OPENAI_API_KEY=your-api-key
 - [Scryfall API Documentation](https://scryfall.com/docs/api)
 
 ---
+
+
+## TODO:
+
+- [ ] Add support for TCGPlayer API for current market prices
+- [ ] Add support for Price Estimate tool for Card Conduit
