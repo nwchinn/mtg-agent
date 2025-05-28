@@ -2,3 +2,5 @@ agents
 openai
 pydantic
 asyncio
+
+pydantic-ai

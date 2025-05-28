@@ -95,6 +95,10 @@ class CardCollection(BaseModel):
         """Returns all cards from the given set"""
         return [card for card in self.cards if card.set_code.lower() == set_code.lower()]
     
+    def get_cards_by_set_name(self, set_name: str) -> List[CardEntry]:
+        """Returns all cards from the given set name"""
+        return [card for card in self.cards if card.set_name.lower() == set_name.lower()]
+    
     def get_cards_by_rarity(self, rarity: Rarity) -> List[CardEntry]:
         """Returns all cards of the given rarity"""
         return [card for card in self.cards if card.rarity == rarity]
@@ -102,6 +106,15 @@ class CardCollection(BaseModel):
     def get_foil_cards(self) -> List[CardEntry]:
         """Returns all foil cards in the collection"""
         return [card for card in self.cards if card.foil]
+    
+    def get_breakdown_by_set_name(self) -> Dict[str, int]:
+        """Returns a dictionary mapping set names to the number of cards in each set"""
+        breakdown = {}
+        for card in self.cards:
+            if card.set_name not in breakdown:
+                breakdown[card.set_name] = 0
+            breakdown[card.set_name] += card.quantity
+        return breakdown
     
     def calculate_deck_ownership(self, deck_cards: Dict[str, int]) -> float:
         """

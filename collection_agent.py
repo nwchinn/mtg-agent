@@ -160,9 +160,6 @@ async def process_collection_query(query: str):
     - Total purchase value (what user paid): {', '.join([f"{float(value)} {currency}" for currency, value in collection_summary.total_value.items()])}
     - Rarity breakdown: {', '.join([f"{rarity}: {count}" for rarity, count in collection_summary.rarity_breakdown.items()])}
     
-    Top valuable cards by PURCHASE PRICE (not current market price):
-    {json.dumps(collection_summary.top_valuable_cards[:5], indent=2)}
-    
     IMPORTANT PRICE INFORMATION:
     - The above prices are PURCHASE PRICES (what the user paid), NOT current market prices
     - For current market prices, you MUST use TCGPlayer.com as your reference
