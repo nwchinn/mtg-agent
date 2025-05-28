@@ -14,7 +14,7 @@ An AI-powered assistant for Magic: The Gathering collection management, analysis
 
 ```bash
 # Clone repository
-git clone https://github.com/yourusername/mtg-agent.git
+git clone https://github.com/nwchinn/mtg-agent.git
 cd mtg-agent
 python -m venv venv
 
