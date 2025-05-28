@@ -5,7 +5,7 @@ This module provides the data models for representing MTG Commander decks.
 
 from typing import Dict, List, Optional, Union, Any
 from enum import Enum
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, HttpUrl
 
 class CardCategory(str, Enum):
     """Card category in a commander deck"""
@@ -125,3 +125,93 @@ class CommanderDeckResponse(BaseModel):
         }
         
         return result
+
+
+def create_commander_deck_from_scryfall(
+    name: str,
+    commander_card: 'ScryfallCard',
+    deck_cards: Dict['ScryfallCard', int],
+    collection = None,
+    description: Optional[str] = None,
+    source: Optional[str] = None,
+    source_url: Optional[HttpUrl] = None
+) -> CommanderDeck:
+    """
+    Create a CommanderDeck object from Scryfall card data
+    
+    Args:
+        name: Name of the deck
+        commander_card: ScryfallCard object representing the commander
+        deck_cards: Dictionary mapping ScryfallCard objects to quantities
+        collection: Optional CardCollection to check ownership against
+        description: Optional description of the deck
+        source: Optional source name of the deck
+        source_url: Optional URL to the source of the deck
+        
+    Returns:
+        CommanderDeck object with card information and ownership status
+    """
+    from models.card_collection import CardCollection
+    from models.scryfall_models import ScryfallCard
+    
+    # Process commander
+    commander_owned = False
+    if collection:
+        # Check if commander exists in collection
+        commander_in_collection = collection.get_cards_by_name(commander_card.name)
+        if commander_in_collection:
+            commander_owned = True
+    
+    # Create commander card
+    commander = commander_card.to_deck_card(quantity=1, owned=commander_owned)
+    commander.category = CardCategory.COMMANDER
+    
+    # Create deck cards
+    deck_card_list = []
+    owned_count = 0
+    total_price = 0.0
+    
+    for card, quantity in deck_cards.items():
+        # Skip the commander, it's handled separately
+        if card.name.lower() == commander_card.name.lower():
+            continue
+        
+        # Check if card exists in collection
+        owned = False
+        if collection:
+            card_in_collection = collection.get_cards_by_name(card.name)
+            owned_quantity = sum(c.quantity for c in card_in_collection)
+            if owned_quantity >= quantity:
+                owned = True
+                owned_count += quantity
+            else:
+                # Partially owned
+                owned_count += owned_quantity
+        
+        # Create the deck card
+        deck_card = card.to_deck_card(quantity=quantity, owned=owned)
+        deck_card_list.append(deck_card)
+        
+        # Add to total price
+        if deck_card.price:
+            total_price += deck_card.price * quantity
+    
+    # Add commander price
+    if commander.price:
+        total_price += commander.price
+    
+    # Calculate ownership percentage
+    total_deck_cards = sum(card.quantity for card in deck_card_list) + 1  # +1 for commander
+    ownership_percentage = (owned_count + (1 if commander_owned else 0)) / total_deck_cards * 100
+    
+    return CommanderDeck(
+        name=name,
+        description=description,
+        commander=commander,
+        cards=deck_card_list,
+        ownership_percentage=round(ownership_percentage, 2),
+        total_price=round(total_price, 2),
+        price_currency="USD",
+        source=source,
+        source_url=source_url
+    )
